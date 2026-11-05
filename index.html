@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI CLAN</title>
   <meta name="description" content="AI CLAN — управляй искусственным интеллектом, а не конкурируй с ним.">
+  <meta name="color-scheme" content="dark light">
+  <script>
+    // Ставим сохранённую тему до отрисовки, чтобы страница не мигала тёмной
+    try {
+      if (localStorage.getItem('theme') === 'light') document.documentElement.dataset.theme = 'light';
+    } catch (e) {}
+  </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,6 +30,57 @@
       --glass: rgba(255, 255, 255, 0.04);
       --glass-border: rgba(255, 255, 255, 0.12);
       --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+      --vignette: rgba(5, 5, 5, 0.85);
+      --blob-opacity: 0.55;
+      --blob-mix-opacity: 0.28;
+      --shadow: rgba(0, 0, 0, 0.45);
+      --shadow-strong: rgba(0, 0, 0, 0.6);
+      --highlight: rgba(255, 255, 255, 0.08);
+      --highlight-line: rgba(255, 255, 255, 0.5);
+      --gradient-end: #ffffff;
+      --surface: rgba(255, 255, 255, 0.05);
+      --surface-focus: rgba(255, 255, 255, 0.07);
+      --surface-hover: rgba(255, 255, 255, 0.12);
+      --modal-bg: rgba(20, 20, 24, 0.72);
+      --overlay: rgba(5, 5, 5, 0.6);
+      --chat-bg: rgba(0, 0, 0, 0.28);
+      --chat-inset: rgba(0, 0, 0, 0.35);
+      --scrollbar: rgba(255, 255, 255, 0.18);
+      --bot-bg: rgba(255, 255, 255, 0.06);
+      --error-text: #ffb8b8;
+    }
+
+    :root[data-theme="light"] {
+      --bg: #f4f3f8;
+      --orange: #f2580a;
+      --orange-soft: #e8590c;
+      --violet: #6a1fe8;
+      --violet-soft: #8a4dff;
+      --text: #14141a;
+      --muted: rgba(20, 20, 26, 0.68);
+      --faint: rgba(20, 20, 26, 0.55);
+      --glass: rgba(255, 255, 255, 0.62);
+      --glass-border: rgba(20, 20, 26, 0.12);
+
+      --vignette: rgba(244, 243, 248, 0.7);
+      --blob-opacity: 0.3;
+      --blob-mix-opacity: 0.16;
+      --shadow: rgba(60, 40, 120, 0.14);
+      --shadow-strong: rgba(60, 40, 120, 0.22);
+      --highlight: rgba(255, 255, 255, 0.9);
+      --highlight-line: rgba(255, 255, 255, 0.95);
+      --gradient-end: #7b2cff;
+      --surface: rgba(20, 20, 26, 0.04);
+      --surface-focus: rgba(20, 20, 26, 0.06);
+      --surface-hover: rgba(20, 20, 26, 0.1);
+      --modal-bg: rgba(255, 255, 255, 0.82);
+      --overlay: rgba(244, 243, 248, 0.6);
+      --chat-bg: rgba(255, 255, 255, 0.45);
+      --chat-inset: rgba(60, 40, 120, 0.1);
+      --scrollbar: rgba(20, 20, 26, 0.25);
+      --bot-bg: rgba(255, 255, 255, 0.8);
+      --error-text: #c0262d;
     }
 
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -52,7 +110,7 @@
       position: absolute;
       border-radius: 50%;
       filter: blur(110px);
-      opacity: 0.55;
+      opacity: var(--blob-opacity);
       will-change: transform;
     }
 
@@ -74,7 +132,7 @@
       width: 35vmax; height: 35vmax;
       background: radial-gradient(circle, #ff3d7f 0%, transparent 65%);
       top: 40%; left: 45%;
-      opacity: 0.28;
+      opacity: var(--blob-mix-opacity);
       animation: drift-c 22s ease-in-out infinite alternate;
     }
 
@@ -98,7 +156,7 @@
       position: absolute;
       inset: 0;
       background:
-        radial-gradient(ellipse at center, transparent 40%, rgba(5,5,5,0.85) 100%),
+        radial-gradient(ellipse at center, transparent 40%, var(--vignette) 100%),
         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
     }
 
@@ -126,8 +184,8 @@
       backdrop-filter: blur(28px) saturate(140%);
       -webkit-backdrop-filter: blur(28px) saturate(140%);
       box-shadow:
-        0 30px 80px rgba(0, 0, 0, 0.45),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        0 30px 80px var(--shadow),
+        inset 0 1px 0 var(--highlight);
     }
 
     .glass::before {
@@ -135,7 +193,7 @@
       position: absolute;
       top: 0; left: 15%; right: 15%;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+      background: linear-gradient(90deg, transparent, var(--highlight-line), transparent);
     }
 
     .eyebrow {
@@ -160,7 +218,7 @@
     }
 
     .gradient-text {
-      background: linear-gradient(120deg, var(--orange) 0%, var(--orange-soft) 35%, #ffffff 80%);
+      background: linear-gradient(120deg, var(--orange) 0%, var(--orange-soft) 35%, var(--gradient-end) 80%);
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
@@ -331,9 +389,9 @@
       transform: translateY(-8px);
       border-color: rgba(255, 140, 70, 0.35);
       box-shadow:
-        0 40px 90px rgba(0, 0, 0, 0.5),
+        0 40px 90px var(--shadow-strong),
         0 0 50px rgba(255, 106, 26, 0.12),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        inset 0 1px 0 var(--highlight);
     }
 
     .feature__icon {
@@ -470,7 +528,7 @@
       display: grid;
       place-items: center;
       padding: 16px;
-      background: rgba(5, 5, 5, 0.6);
+      background: var(--overlay);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       opacity: 0;
@@ -484,10 +542,10 @@
       width: min(460px, 100%);
       padding: 56px 36px 40px;
       text-align: center;
-      background: rgba(20, 20, 24, 0.72);
+      background: var(--modal-bg);
       border-radius: 28px;
       box-shadow:
-        0 40px 100px rgba(0, 0, 0, 0.6),
+        0 40px 100px var(--shadow-strong),
         0 0 60px rgba(123, 44, 255, 0.18);
       transform: translateY(24px) scale(0.94);
       transition: transform 0.5s var(--ease);
@@ -533,7 +591,7 @@
       font: inherit;
       font-size: 15px;
       color: var(--text);
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--surface);
       border: 1px solid var(--glass-border);
       border-radius: 16px;
       outline: none;
@@ -544,7 +602,7 @@
 
     .input:focus {
       border-color: rgba(255, 140, 70, 0.6);
-      background: rgba(255, 255, 255, 0.07);
+      background: var(--surface-focus);
       box-shadow: 0 0 0 4px rgba(255, 106, 26, 0.12), 0 0 24px rgba(255, 106, 26, 0.15);
     }
 
@@ -569,7 +627,7 @@
       width: 36px; height: 36px;
       border-radius: 50%;
       border: 1px solid var(--glass-border);
-      background: rgba(255, 255, 255, 0.04);
+      background: var(--surface);
       color: var(--text);
       cursor: pointer;
       display: grid;
@@ -577,7 +635,7 @@
       transition: background 0.3s, transform 0.3s var(--ease);
     }
 
-    .modal__close:hover { background: rgba(255, 255, 255, 0.12); transform: rotate(90deg); }
+    .modal__close:hover { background: var(--surface-hover); transform: rotate(90deg); }
 
     .btn--small { padding: 14px 36px; font-size: 13px; }
 
@@ -623,11 +681,11 @@
       gap: 12px;
       padding: 20px;
       border-radius: 22px;
-      background: rgba(0, 0, 0, 0.28);
+      background: var(--chat-bg);
       border: 1px solid var(--glass-border);
-      box-shadow: inset 0 2px 20px rgba(0, 0, 0, 0.35);
+      box-shadow: inset 0 2px 20px var(--chat-inset);
       scrollbar-width: thin;
-      scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+      scrollbar-color: var(--scrollbar) transparent;
     }
 
     .msg {
@@ -652,14 +710,14 @@
     .msg--bot {
       align-self: flex-start;
       color: var(--text);
-      background: rgba(255, 255, 255, 0.06);
+      background: var(--bot-bg);
       border: 1px solid var(--glass-border);
       border-bottom-left-radius: 6px;
       box-shadow: 0 0 24px rgba(123, 44, 255, 0.12);
     }
 
     .msg--error {
-      color: #ffb8b8;
+      color: var(--error-text);
       border-color: rgba(255, 80, 80, 0.45);
     }
 
@@ -709,6 +767,36 @@
       color: var(--faint);
       margin-top: -14px;
     }
+
+    /* ───────── Theme toggle ───────── */
+    .theme-toggle {
+      position: fixed;
+      top: 16px; right: 16px;
+      z-index: 150;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--glass-border);
+      background: var(--glass);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      color: var(--text);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 0.3s, transform 0.3s var(--ease);
+    }
+
+    .theme-toggle:hover { background: var(--surface-hover); transform: rotate(18deg); }
+
+    .theme-toggle:focus-visible {
+      outline: 2px solid var(--orange);
+      outline-offset: 3px;
+    }
+
+    .theme-toggle svg { grid-area: 1 / 1; }
+    .theme-toggle .icon-moon { display: none; }
+    :root[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+    :root[data-theme="light"] .theme-toggle .icon-moon { display: block; }
 
     /* ───────── Keyframes ───────── */
     @keyframes typing {
@@ -770,6 +858,16 @@
   </div>
 
   <canvas id="trail" aria-hidden="true"></canvas>
+
+  <button class="theme-toggle" id="themeToggle" type="button" aria-label="Включить светлую тему" aria-pressed="false">
+    <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+    </svg>
+    <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
 
   <main>
     <!-- Hero -->
@@ -926,6 +1024,28 @@
   </div>
 
   <script>
+    /* ───────── Theme toggle ───────── */
+    (() => {
+      const root = document.documentElement;
+      const btn = document.getElementById('themeToggle');
+
+      const apply = (theme) => {
+        const light = theme === 'light';
+        if (light) root.dataset.theme = 'light';
+        else delete root.dataset.theme;
+        btn.setAttribute('aria-pressed', String(light));
+        btn.setAttribute('aria-label', light ? 'Включить тёмную тему' : 'Включить светлую тему');
+      };
+
+      apply(root.dataset.theme === 'light' ? 'light' : 'dark');
+
+      btn.addEventListener('click', () => {
+        const next = root.dataset.theme === 'light' ? 'dark' : 'light';
+        apply(next);
+        try { localStorage.setItem('theme', next); } catch (e) {}
+      });
+    })();
+
     /* ───────── Modal ───────── */
     (() => {
       const modal = document.getElementById('modal');
