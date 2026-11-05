@@ -3,3 +3,5 @@
 *.log
 .env
 node_modules/
+.playwright-mcp/
+screenshot-*.png
