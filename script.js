@@ -6,6 +6,7 @@ require('dotenv').config(); // читает .env и кладёт значени�
 
 const http = require('node:http');
 const fs = require('node:fs/promises');
+const crypto = require('node:crypto');
 const path = require('node:path');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -13,6 +14,9 @@ const API_KEY = process.env.OPENROUTER_API_KEY;
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3.5-lightning:free';
 const INDEX_PATH = path.join(__dirname, 'index.html');
+// Сколько прокси стоит перед сервером (0 — сервер доступен напрямую).
+// Нужно, чтобы лимит запросов считался по реальному IP посетителя, а не по IP прокси.
+const TRUST_PROXY = Math.max(0, Math.floor(Number(process.env.TRUST_PROXY)) || 0);
 
 // Инструкция для модели: кто она и как отвечать
 const SYSTEM_PROMPT = [
@@ -64,6 +68,41 @@ setInterval(() => {
 }, RATE_WINDOW_MS).unref();
 
 /* ───────── Помощники ───────── */
+// IP посетителя. X-Forwarded-For можно подделать, поэтому берём запись, добавленную
+// ближайшим доверенным прокси (считая с конца), а не первую из списка.
+function getClientIp(req) {
+  if (TRUST_PROXY > 0) {
+    const chain = String(req.headers['x-forwarded-for'] || '')
+      .split(',').map((s) => s.trim()).filter(Boolean);
+    const ip = chain[chain.length - TRUST_PROXY];
+    if (ip) return ip;
+  }
+  return req.socket.remoteAddress;
+}
+
+// Заголовки безопасности для всех ответов
+function setSecurityHeaders(res) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+}
+
+// CSP для страницы: скрипты и стили только с одноразовым nonce, запросы только на свой сервер
+function buildCsp(nonce) {
+  return [
+    "default-src 'none'",
+    `script-src 'nonce-${nonce}'`,
+    `style-src 'nonce-${nonce}' https://fonts.googleapis.com`,
+    "font-src https://fonts.gstatic.com",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+  ].join('; ');
+}
+
 function sendJson(res, status, payload) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(payload));
@@ -160,12 +199,18 @@ async function askModel(messages) {
 /* ───────── Сервер ───────── */
 const server = http.createServer(async (req, res) => {
   const { pathname } = new URL(req.url, 'http://localhost');
+  setSecurityHeaders(res);
 
   try {
     // Страница сайта. Отдаём только index.html, остальные файлы папки (включая .env) недоступны
     if (req.method === 'GET' && (pathname === '/' || pathname === '/index.html')) {
-      const html = await fs.readFile(INDEX_PATH);
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      const nonce = crypto.randomBytes(16).toString('base64');
+      const html = (await fs.readFile(INDEX_PATH, 'utf8'))
+        .replace(/<(script|style)>/g, `<$1 nonce="${nonce}">`);
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Security-Policy': buildCsp(nonce),
+      });
       res.end(html);
       return;
     }
@@ -173,7 +218,7 @@ const server = http.createServer(async (req, res) => {
     // Чат
     if (pathname === '/api/chat') {
       if (req.method !== 'POST') throw new HttpError(405, 'Используй метод POST');
-      if (isRateLimited(req.socket.remoteAddress)) {
+      if (isRateLimited(getClientIp(req))) {
         throw new HttpError(429, 'Слишком много вопросов подряд. Передохни минутку.');
       }
       const body = await readJson(req);
@@ -193,4 +238,5 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`AI CLAN запущен: http://localhost:${PORT}`);
   console.log(`Модель: ${MODEL}`);
+  if (TRUST_PROXY > 0) console.log(`Доверяем прокси: ${TRUST_PROXY} (IP берётся из X-Forwarded-For)`);
 });
