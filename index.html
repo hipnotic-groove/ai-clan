@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI CLAN</title>
+  <meta name="description" content="AI CLAN — управляй искусственным интеллектом, а не конкурируй с ним.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #050505;
+      --orange: #ff6a1a;
+      --orange-soft: #ff9a4d;
+      --violet: #7b2cff;
+      --violet-soft: #a96bff;
+      --text: #f5f5f7;
+      --muted: rgba(245, 245, 247, 0.62);
+      --faint: rgba(245, 245, 247, 0.38);
+      --glass: rgba(255, 255, 255, 0.04);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    body.modal-open { overflow: hidden; }
+
+    /* ───────── Animated background ───────── */
+    .bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(110px);
+      opacity: 0.55;
+      will-change: transform;
+    }
+
+    .blob--orange {
+      width: 55vmax; height: 55vmax;
+      background: radial-gradient(circle, var(--orange) 0%, transparent 65%);
+      top: -15vmax; left: -12vmax;
+      animation: drift-a 26s ease-in-out infinite alternate;
+    }
+
+    .blob--violet {
+      width: 60vmax; height: 60vmax;
+      background: radial-gradient(circle, var(--violet) 0%, transparent 65%);
+      bottom: -20vmax; right: -15vmax;
+      animation: drift-b 32s ease-in-out infinite alternate;
+    }
+
+    .blob--mix {
+      width: 35vmax; height: 35vmax;
+      background: radial-gradient(circle, #ff3d7f 0%, transparent 65%);
+      top: 40%; left: 45%;
+      opacity: 0.28;
+      animation: drift-c 22s ease-in-out infinite alternate;
+    }
+
+    @keyframes drift-a {
+      0%   { transform: translate(0, 0) scale(1); }
+      50%  { transform: translate(18vw, 14vh) scale(1.15); }
+      100% { transform: translate(8vw, 30vh) scale(0.95); }
+    }
+    @keyframes drift-b {
+      0%   { transform: translate(0, 0) scale(1); }
+      50%  { transform: translate(-20vw, -12vh) scale(1.1); }
+      100% { transform: translate(-6vw, -28vh) scale(1.2); }
+    }
+    @keyframes drift-c {
+      0%   { transform: translate(-50%, -50%) scale(0.9); }
+      100% { transform: translate(-30%, -70%) scale(1.25); }
+    }
+
+    .bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at center, transparent 40%, rgba(5,5,5,0.85) 100%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+    }
+
+    /* ───────── Cursor trail ───────── */
+    #trail {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      pointer-events: none;
+    }
+
+    /* ───────── Layout ───────── */
+    main { position: relative; z-index: 1; }
+
+    .section {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      padding: clamp(80px, 12vw, 140px) 16px;
+    }
+
+    .glass {
+      position: relative;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(28px) saturate(140%);
+      -webkit-backdrop-filter: blur(28px) saturate(140%);
+      box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .glass::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 15%; right: 15%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    .eyebrow::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--orange);
+      box-shadow: 0 0 12px var(--orange);
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+
+    .gradient-text {
+      background: linear-gradient(120deg, var(--orange) 0%, var(--orange-soft) 35%, #ffffff 80%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .h2 {
+      font-family: 'Unbounded', sans-serif;
+      font-weight: 700;
+      font-size: clamp(32px, 5.5vw, 56px);
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+    }
+
+    /* ───────── Hero ───────── */
+    .hero {
+      min-height: 100vh;
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      position: relative;
+    }
+
+    .hero__card {
+      width: min(760px, 100%);
+      padding: clamp(40px, 7vw, 80px) clamp(24px, 6vw, 72px);
+      text-align: center;
+      border-radius: 32px;
+      animation: rise 1.2s var(--ease) both;
+    }
+
+    .hero .eyebrow { animation: rise 1s var(--ease) 0.25s both; }
+
+    .hero h1 {
+      font-family: 'Unbounded', sans-serif;
+      font-weight: 900;
+      font-size: clamp(56px, 13vw, 132px);
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+      background-size: 200% 100%;
+      animation:
+        rise 1.2s var(--ease) 0.4s both,
+        shimmer 8s ease-in-out 1.6s infinite alternate;
+    }
+
+    .hero__sub {
+      max-width: 520px;
+      margin: 32px auto 48px;
+      font-size: clamp(16px, 2.2vw, 19px);
+      font-weight: 300;
+      line-height: 1.6;
+      color: var(--muted);
+      animation: rise 1.2s var(--ease) 0.6s both;
+    }
+
+    .hero__sub strong {
+      display: block;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .hero .btn { animation: rise 1.2s var(--ease) 0.8s both; }
+
+    .scroll-hint {
+      position: absolute;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 26px; height: 42px;
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      animation: rise 1s var(--ease) 1.4s both;
+    }
+
+    .scroll-hint::after {
+      content: '';
+      position: absolute;
+      top: 8px; left: 50%;
+      width: 3px; height: 8px;
+      margin-left: -1.5px;
+      border-radius: 2px;
+      background: var(--orange);
+      box-shadow: 0 0 8px var(--orange);
+      animation: wheel 2s var(--ease) infinite;
+    }
+
+    /* ───────── Neon button ───────── */
+    .btn {
+      position: relative;
+      font-family: 'Unbounded', sans-serif;
+      font-weight: 500;
+      font-size: 15px;
+      letter-spacing: 0.04em;
+      color: #fff;
+      padding: 20px 48px;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--orange) 0%, #ff4d4d 100%);
+      box-shadow:
+        0 0 20px rgba(255, 106, 26, 0.55),
+        0 0 60px rgba(255, 106, 26, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      transition:
+        transform 0.5s var(--ease),
+        box-shadow 0.5s var(--ease);
+      isolation: isolate;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: linear-gradient(135deg, var(--violet) 0%, var(--violet-soft) 100%);
+      opacity: 0;
+      transition: opacity 0.5s var(--ease);
+    }
+
+    .btn:hover,
+    .btn:focus-visible {
+      transform: scale(1.07);
+      box-shadow:
+        0 0 24px rgba(123, 44, 255, 0.7),
+        0 0 80px rgba(123, 44, 255, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      outline: none;
+    }
+
+    .btn:hover::before,
+    .btn:focus-visible::before { opacity: 1; }
+
+    .btn:active { transform: scale(1.02); }
+
+    /* ───────── Features ───────── */
+    .features__head {
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto clamp(48px, 7vw, 72px);
+    }
+
+    .features__head p {
+      margin-top: 20px;
+      color: var(--muted);
+      font-weight: 300;
+      font-size: 17px;
+      line-height: 1.6;
+    }
+
+    .features__grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .feature {
+      padding: 40px 32px 44px;
+      border-radius: 28px;
+      transition:
+        transform 0.6s var(--ease),
+        border-color 0.6s var(--ease),
+        box-shadow 0.6s var(--ease);
+    }
+
+    .feature:hover {
+      transform: translateY(-8px);
+      border-color: rgba(255, 140, 70, 0.35);
+      box-shadow:
+        0 40px 90px rgba(0, 0, 0, 0.5),
+        0 0 50px rgba(255, 106, 26, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .feature__icon {
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 32px;
+      background: linear-gradient(135deg, rgba(255,106,26,0.22), rgba(123,44,255,0.22));
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 0 30px rgba(255, 106, 26, 0.18);
+      color: var(--orange-soft);
+    }
+
+    .feature:nth-child(2) .feature__icon { color: #ff7fa8; }
+    .feature:nth-child(3) .feature__icon { color: var(--violet-soft); }
+
+    .feature__num {
+      position: absolute;
+      top: 36px; right: 32px;
+      font-family: 'Unbounded', sans-serif;
+      font-size: 13px;
+      color: var(--faint);
+    }
+
+    .feature h3 {
+      font-family: 'Unbounded', sans-serif;
+      font-weight: 500;
+      font-size: 22px;
+      margin-bottom: 14px;
+    }
+
+    .feature p {
+      color: var(--muted);
+      font-weight: 300;
+      font-size: 15.5px;
+      line-height: 1.65;
+    }
+
+    /* ───────── About ───────── */
+    .about__card {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr;
+      gap: clamp(32px, 6vw, 80px);
+      padding: clamp(40px, 7vw, 80px) clamp(24px, 6vw, 72px);
+      border-radius: 32px;
+      overflow: hidden;
+    }
+
+    .about__card::after {
+      content: '';
+      position: absolute;
+      width: 420px; height: 420px;
+      left: -160px; bottom: -200px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(123,44,255,0.35), transparent 65%);
+      filter: blur(40px);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .about__text p {
+      color: var(--muted);
+      font-weight: 300;
+      font-size: 17px;
+      line-height: 1.75;
+    }
+
+    .about__text p + p { margin-top: 20px; }
+
+    .about__text strong { color: var(--text); font-weight: 500; }
+
+    .about__stats {
+      display: flex;
+      gap: 40px;
+      margin-top: 40px;
+      padding-top: 32px;
+      border-top: 1px solid var(--glass-border);
+    }
+
+    .stat b {
+      display: block;
+      font-family: 'Unbounded', sans-serif;
+      font-weight: 700;
+      font-size: 30px;
+      margin-bottom: 4px;
+    }
+
+    .stat span { font-size: 13px; color: var(--faint); }
+
+    /* ───────── Footer ───────── */
+    .footer {
+      position: relative;
+      z-index: 1;
+      padding: 40px 16px 48px;
+      text-align: center;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      color: var(--faint);
+    }
+
+    .footer::before {
+      content: '';
+      display: block;
+      width: min(1088px, 100%);
+      height: 1px;
+      margin: 0 auto 40px;
+      background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+    }
+
+    /* ───────── Scroll reveal ───────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      filter: blur(8px);
+      transition:
+        opacity 1s var(--ease),
+        transform 1s var(--ease),
+        filter 1s var(--ease);
+      transition-delay: var(--d, 0s);
+    }
+
+    .reveal.is-visible {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+
+    /* ───────── Modal ───────── */
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      background: rgba(5, 5, 5, 0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.4s var(--ease), visibility 0.4s;
+    }
+
+    .modal.is-open { opacity: 1; visibility: visible; }
+
+    .modal__box {
+      width: min(460px, 100%);
+      padding: 56px 36px 40px;
+      text-align: center;
+      background: rgba(20, 20, 24, 0.72);
+      border-radius: 28px;
+      box-shadow:
+        0 40px 100px rgba(0, 0, 0, 0.6),
+        0 0 60px rgba(123, 44, 255, 0.18);
+      transform: translateY(24px) scale(0.94);
+      transition: transform 0.5s var(--ease);
+    }
+
+    .modal.is-open .modal__box { transform: none; }
+
+    .modal__icon {
+      width: 64px; height: 64px;
+      margin: 0 auto 24px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--orange), var(--violet));
+      box-shadow: 0 0 40px rgba(255, 106, 26, 0.45);
+    }
+
+    .modal__title {
+      font-family: 'Unbounded', sans-serif;
+      font-weight: 700;
+      font-size: clamp(20px, 5vw, 26px);
+      line-height: 1.25;
+      margin-bottom: 12px;
+    }
+
+    .modal__text {
+      font-size: 15px;
+      font-weight: 300;
+      line-height: 1.6;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    .form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .input {
+      width: 100%;
+      padding: 18px 22px;
+      font: inherit;
+      font-size: 15px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
+    }
+
+    .input::placeholder { color: var(--faint); }
+
+    .input:focus {
+      border-color: rgba(255, 140, 70, 0.6);
+      background: rgba(255, 255, 255, 0.07);
+      box-shadow: 0 0 0 4px rgba(255, 106, 26, 0.12), 0 0 24px rgba(255, 106, 26, 0.15);
+    }
+
+    .form .btn { width: 100%; padding: 18px; }
+
+    .form__note {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--faint);
+    }
+
+    .modal__success { display: none; }
+    .modal__box.is-done .modal__form-state { display: none; }
+    .modal__box.is-done .modal__success {
+      display: block;
+      animation: rise 0.7s var(--ease) both;
+    }
+
+    .modal__close {
+      position: absolute;
+      top: 16px; right: 16px;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 0.3s, transform 0.3s var(--ease);
+    }
+
+    .modal__close:hover { background: rgba(255, 255, 255, 0.12); transform: rotate(90deg); }
+
+    .btn--small { padding: 14px 36px; font-size: 13px; }
+
+    /* ───────── Keyframes ───────── */
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(28px); filter: blur(8px); }
+      to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+    }
+
+    @keyframes shimmer {
+      from { background-position: 0% 50%; }
+      to   { background-position: 100% 50%; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.35; }
+    }
+
+    @keyframes wheel {
+      0%   { opacity: 0; transform: translateY(0); }
+      30%  { opacity: 1; }
+      100% { opacity: 0; transform: translateY(14px); }
+    }
+
+    /* ───────── Responsive ───────── */
+    @media (max-width: 900px) {
+      .features__grid { grid-template-columns: 1fr; max-width: 520px; margin: 0 auto; }
+      .about__card { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 480px) {
+      .about__stats { gap: 24px; }
+      .stat b { font-size: 24px; }
+      .modal__box { padding: 52px 22px 32px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg" aria-hidden="true">
+    <div class="blob blob--orange"></div>
+    <div class="blob blob--violet"></div>
+    <div class="blob blob--mix"></div>
+  </div>
+
+  <canvas id="trail" aria-hidden="true"></canvas>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero__card glass">
+        <span class="eyebrow">Новая эра</span>
+        <h1 class="gradient-text">AI CLAN</h1>
+        <p class="hero__sub">
+          <strong>Будущее уже здесь.</strong>
+          Управляй искусственным интеллектом, а не конкурируй с ним
+        </p>
+        <button class="btn js-open-modal" type="button">Присоединиться</button>
+      </div>
+      <a href="#features" class="scroll-hint" aria-label="Прокрутить вниз"></a>
+    </section>
+
+    <!-- Features -->
+    <section class="section" id="features">
+      <div class="features__head reveal">
+        <span class="eyebrow">Возможности</span>
+        <h2 class="h2 gradient-text">ИИ работает на тебя</h2>
+        <p>Три принципа, на которых строится всё, чему ты научишься в клане.</p>
+      </div>
+
+      <div class="features__grid">
+        <article class="feature glass reveal" style="--d: 0s">
+          <span class="feature__num">01</span>
+          <div class="feature__icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>
+            </svg>
+          </div>
+          <h3>Скорость</h3>
+          <p>Задачи, на которые раньше уходили дни, решаются за минуты. Ты думаешь — нейросеть исполняет.</p>
+        </article>
+
+        <article class="feature glass reveal" style="--d: 0.12s">
+          <span class="feature__num">02</span>
+          <div class="feature__icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </div>
+          <h3>Автоматизация</h3>
+          <p>Рутина уходит в фон. Агенты и сценарии берут на себя повторяющиеся процессы, пока ты занят главным.</p>
+        </article>
+
+        <article class="feature glass reveal" style="--d: 0.24s">
+          <span class="feature__num">03</span>
+          <div class="feature__icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 17l6-6 4 4 8-8"/>
+              <path d="M15 7h6v6"/>
+            </svg>
+          </div>
+          <h3>Масштабирование</h3>
+          <p>Один человек с правильными инструментами — это целая команда. Растите без пропорционального роста затрат.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- About -->
+    <section class="section" id="about">
+      <div class="about__card glass reveal">
+        <div>
+          <span class="eyebrow">О проекте</span>
+          <h2 class="h2 gradient-text">Твой путь в IT без&nbsp;боли</h2>
+        </div>
+        <div class="about__text">
+          <p>
+            <strong>AI CLAN — это сообщество людей, которые не ждут будущего, а строят его.</strong>
+            Мы собрали практику, инструменты и единомышленников в одном месте, чтобы вход в технологии
+            перестал быть бесконечной гонкой за туториалами.
+          </p>
+          <p>
+            Никакой воды и устаревших курсов. Только реальные задачи, живые разборы и нейросети как
+            твой личный усилитель. Ты учишься ставить задачи ИИ, проверять результат и превращать
+            идеи в работающие продукты — с первого дня.
+          </p>
+          <div class="about__stats">
+            <div class="stat"><b class="gradient-text">24/7</b><span>поддержка клана</span></div>
+            <div class="stat"><b class="gradient-text">0</b><span>скучных лекций</span></div>
+            <div class="stat"><b class="gradient-text">∞</b><span>возможностей</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">© 2026 AI CLAN. Все права защищены</footer>
+
+  <!-- Modal -->
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
+    <div class="modal__box glass" id="modalBox">
+      <button class="modal__close js-close-modal" type="button" aria-label="Закрыть">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M1 1l12 12M13 1L1 13"/>
+        </svg>
+      </button>
+
+      <div class="modal__form-state">
+        <div class="modal__icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2l3 6 6 .9-4.5 4.3 1 6.3L12 16.5 6.5 19.5l1-6.3L3 8.9 9 8z"/>
+          </svg>
+        </div>
+        <h2 class="modal__title gradient-text" id="modalTitle">Добро пожаловать в клан</h2>
+        <p class="modal__text">Оставь email — и ты первым узнаешь о запуске.</p>
+        <form class="form" id="joinForm" novalidate>
+          <input class="input" id="email" type="email" name="email" placeholder="you@example.com" autocomplete="email" required aria-label="Email">
+          <button class="btn" type="submit">Вступить</button>
+          <p class="form__note">Никакого спама. Только важное.</p>
+        </form>
+      </div>
+
+      <div class="modal__success">
+        <div class="modal__icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12.5l4.5 4.5L19 7.5"/>
+          </svg>
+        </div>
+        <h2 class="modal__title gradient-text">Ты в клане</h2>
+        <p class="modal__text">Ты на правильной стороне будущего. Скоро напишем.</p>
+        <button class="btn btn--small js-close-modal" type="button">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ───────── Modal ───────── */
+    (() => {
+      const modal = document.getElementById('modal');
+      const box = document.getElementById('modalBox');
+      const form = document.getElementById('joinForm');
+      const email = document.getElementById('email');
+      let lastTrigger = null;
+
+      const open = (trigger) => {
+        lastTrigger = trigger;
+        box.classList.remove('is-done');
+        form.reset();
+        email.style.borderColor = '';
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        setTimeout(() => email.focus(), 250);
+      };
+
+      const close = () => {
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        if (lastTrigger) lastTrigger.focus();
+      };
+
+      document.querySelectorAll('.js-open-modal').forEach(btn =>
+        btn.addEventListener('click', () => open(btn)));
+      document.querySelectorAll('.js-close-modal').forEach(btn =>
+        btn.addEventListener('click', close));
+
+      modal.addEventListener('click', e => { if (e.target === modal) close(); });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
+      });
+
+      // Visual-only form: validate, then show success state
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        if (!email.checkValidity() || !email.value.trim()) {
+          email.style.borderColor = 'rgba(255, 80, 80, 0.8)';
+          email.focus();
+          return;
+        }
+        box.classList.add('is-done');
+      });
+
+      email.addEventListener('input', () => { email.style.borderColor = ''; });
+    })();
+
+    /* ───────── Scroll reveal ───────── */
+    (() => {
+      const items = document.querySelectorAll('.reveal');
+      if (!('IntersectionObserver' in window)) {
+        items.forEach(el => el.classList.add('is-visible'));
+        return;
+      }
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const el = entry.target;
+            el.classList.add('is-visible');
+            io.unobserve(el);
+            // Hand control back to the element's own transitions (e.g. card hover)
+            el.addEventListener('transitionend', function done(ev) {
+              if (ev.target !== el || ev.propertyName !== 'opacity') return;
+              el.classList.remove('reveal', 'is-visible');
+              el.removeEventListener('transitionend', done);
+            });
+          }
+        });
+      }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+      items.forEach(el => io.observe(el));
+    })();
+
+    /* ───────── Glowing cursor trail ───────── */
+    (() => {
+      const finePointer = window.matchMedia('(pointer: fine)').matches;
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!finePointer || reduced) return;
+
+      const canvas = document.getElementById('trail');
+      const ctx = canvas.getContext('2d');
+      const points = [];
+      const MAX_AGE = 28;
+
+      const resize = () => {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = innerWidth * dpr;
+        canvas.height = innerHeight * dpr;
+        canvas.style.width = innerWidth + 'px';
+        canvas.style.height = innerHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      };
+      resize();
+      window.addEventListener('resize', resize);
+
+      window.addEventListener('pointermove', e => {
+        points.push({ x: e.clientX, y: e.clientY, age: 0 });
+      });
+
+      const render = () => {
+        ctx.clearRect(0, 0, innerWidth, innerHeight);
+        ctx.globalCompositeOperation = 'lighter';
+
+        for (const p of points) p.age++;
+        while (points.length && points[0].age > MAX_AGE) points.shift();
+
+        for (let i = 1; i < points.length; i++) {
+          const p0 = points[i - 1];
+          const p1 = points[i];
+          const life = 1 - p1.age / MAX_AGE;
+          const t = i / points.length;
+
+          const r = Math.round(123 + (255 - 123) * t);
+          const g = Math.round(44 + (106 - 44) * t);
+          const b = Math.round(255 + (26 - 255) * t);
+
+          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${life * 0.55})`;
+          ctx.lineWidth = 1 + life * 6;
+          ctx.lineCap = 'round';
+          ctx.shadowBlur = 18;
+          ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${life})`;
+
+          ctx.beginPath();
+          ctx.moveTo(p0.x, p0.y);
+          ctx.lineTo(p1.x, p1.y);
+          ctx.stroke();
+        }
+
+        const head = points[points.length - 1];
+        if (head) {
+          const life = 1 - head.age / MAX_AGE;
+          const grad = ctx.createRadialGradient(head.x, head.y, 0, head.x, head.y, 28);
+          grad.addColorStop(0, `rgba(255, 140, 60, ${0.35 * life})`);
+          grad.addColorStop(1, 'rgba(255, 140, 60, 0)');
+          ctx.fillStyle = grad;
+          ctx.shadowBlur = 0;
+          ctx.beginPath();
+          ctx.arc(head.x, head.y, 28, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        requestAnimationFrame(render);
+      };
+      requestAnimationFrame(render);
+    })();
+  </script>
+</body>
+</html>
