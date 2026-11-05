@@ -581,7 +581,141 @@
 
     .btn--small { padding: 14px 36px; font-size: 13px; }
 
+    /* ───────── Chat ───────── */
+    .chat {
+      width: min(820px, 100%);
+      margin: 0 auto;
+      padding: clamp(36px, 6vw, 64px) clamp(18px, 5vw, 56px);
+      border-radius: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      overflow: hidden;
+    }
+
+    .chat::after {
+      content: '';
+      position: absolute;
+      width: 420px; height: 420px;
+      right: -180px; top: -200px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,106,26,0.28), transparent 65%);
+      filter: blur(40px);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .chat__head { text-align: center; }
+
+    .chat__head p {
+      margin-top: 16px;
+      color: var(--muted);
+      font-weight: 300;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .chat__log {
+      height: clamp(320px, 50vh, 440px);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 20px;
+      border-radius: 22px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid var(--glass-border);
+      box-shadow: inset 0 2px 20px rgba(0, 0, 0, 0.35);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+    }
+
+    .msg {
+      max-width: 85%;
+      padding: 14px 18px;
+      border-radius: 20px;
+      font-size: 15px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      animation: rise 0.5s var(--ease) both;
+    }
+
+    .msg--user {
+      align-self: flex-end;
+      color: #fff;
+      background: linear-gradient(135deg, rgba(255,106,26,0.92), rgba(255,77,77,0.92));
+      border-bottom-right-radius: 6px;
+      box-shadow: 0 0 24px rgba(255, 106, 26, 0.28);
+    }
+
+    .msg--bot {
+      align-self: flex-start;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--glass-border);
+      border-bottom-left-radius: 6px;
+      box-shadow: 0 0 24px rgba(123, 44, 255, 0.12);
+    }
+
+    .msg--error {
+      color: #ffb8b8;
+      border-color: rgba(255, 80, 80, 0.45);
+    }
+
+    .msg--typing { display: flex; gap: 6px; padding: 18px 20px; }
+
+    .msg--typing span {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--violet-soft);
+      box-shadow: 0 0 10px var(--violet);
+      animation: typing 1.2s ease-in-out infinite;
+    }
+
+    .msg--typing span:nth-child(2) { animation-delay: 0.15s; }
+    .msg--typing span:nth-child(3) { animation-delay: 0.3s; }
+
+    .chat__form {
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+    }
+
+    .chat__input {
+      resize: none;
+      min-height: 58px;
+      max-height: 160px;
+      line-height: 1.5;
+    }
+
+    .chat__send {
+      flex: none;
+      width: 58px; height: 58px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+    }
+
+    .chat__send:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .chat__note {
+      text-align: center;
+      font-size: 12px;
+      color: var(--faint);
+      margin-top: -14px;
+    }
+
     /* ───────── Keyframes ───────── */
+    @keyframes typing {
+      0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+      30%           { opacity: 1;   transform: translateY(-5px); }
+    }
+
     @keyframes rise {
       from { opacity: 0; transform: translateY(28px); filter: blur(8px); }
       to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
@@ -613,6 +747,8 @@
       .about__stats { gap: 24px; }
       .stat b { font-size: 24px; }
       .modal__box { padding: 52px 22px 32px; }
+      .chat__log { padding: 14px; }
+      .msg { max-width: 92%; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -720,6 +856,32 @@
             <div class="stat"><b class="gradient-text">∞</b><span>возможностей</span></div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Chat -->
+    <section class="section" id="chat">
+      <div class="chat glass reveal">
+        <div class="chat__head">
+          <span class="eyebrow">ИИ-помощник</span>
+          <h2 class="h2 gradient-text">Спроси ИИ-клан</h2>
+          <p>Задай вопрос о нейросетях, IT или о клане — ответ появится прямо здесь.</p>
+        </div>
+
+        <div class="chat__log" id="chatLog" role="log" aria-live="polite" aria-label="Переписка с ИИ">
+          <div class="msg msg--bot">Привет! Я ИИ-помощник AI CLAN. О чём хочешь спросить?</div>
+        </div>
+
+        <form class="chat__form" id="chatForm">
+          <textarea class="input chat__input" id="chatInput" rows="1" maxlength="1000"
+                    placeholder="Напиши вопрос…" aria-label="Твой вопрос"></textarea>
+          <button class="btn chat__send" type="submit" aria-label="Отправить">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
+          </button>
+        </form>
+        <p class="chat__note">Enter — отправить, Shift + Enter — новая строка</p>
       </div>
     </section>
   </main>
@@ -910,6 +1072,85 @@
         requestAnimationFrame(render);
       };
       requestAnimationFrame(render);
+    })();
+
+    /* ───────── AI chat ───────── */
+    (() => {
+      const log = document.getElementById('chatLog');
+      const form = document.getElementById('chatForm');
+      const input = document.getElementById('chatInput');
+      const send = form.querySelector('.chat__send');
+      const history = []; // { role: 'user' | 'assistant', content }
+      let busy = false;
+
+      const addMessage = (text, className) => {
+        const el = document.createElement('div');
+        el.className = `msg ${className}`;
+        el.textContent = text; // textContent: никакого HTML из ответа модели
+        log.appendChild(el);
+        log.scrollTop = log.scrollHeight;
+        return el;
+      };
+
+      const showTyping = () => {
+        const el = addMessage('', 'msg--bot msg--typing');
+        el.setAttribute('aria-label', 'ИИ печатает');
+        el.innerHTML = '<span></span><span></span><span></span>';
+        return el;
+      };
+
+      const autosize = () => {
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+      };
+
+      input.addEventListener('input', autosize);
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+          e.preventDefault();
+          form.requestSubmit();
+        }
+      });
+
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text || busy) return;
+
+        busy = true;
+        send.disabled = true;
+        addMessage(text, 'msg--user');
+        history.push({ role: 'user', content: text });
+        input.value = '';
+        autosize();
+        const typing = showTyping();
+
+        try {
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: history.slice(-10) }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || 'Что-то пошло не так. Попробуй ещё раз.');
+
+          const reply = data.reply || 'ИИ промолчал. Попробуй спросить иначе.';
+          typing.remove();
+          addMessage(reply, 'msg--bot');
+          history.push({ role: 'assistant', content: reply });
+        } catch (err) {
+          typing.remove();
+          history.pop(); // неотвеченный вопрос не отправляем в следующий раз
+          const message = err instanceof TypeError
+            ? 'Нет связи с сервером. Сайт открыт через npm start → http://localhost:3000?'
+            : err.message;
+          addMessage(message, 'msg--bot msg--error');
+        } finally {
+          busy = false;
+          send.disabled = false;
+          input.focus();
+        }
+      });
     })();
   </script>
 </body>
