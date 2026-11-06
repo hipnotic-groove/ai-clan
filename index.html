@@ -6,6 +6,7 @@
   <title>AI CLAN</title>
   <meta name="description" content="AI CLAN — управляй искусственным интеллектом, а не конкурируй с ним.">
   <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E">
   <script>
     // Ставим сохранённую тему до отрисовки, чтобы страница не мигала тёмной
     try {
@@ -1253,7 +1254,7 @@
           const res = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: history.filter(m => m.role === 'user').slice(-10) }), // сервер принимает только роль user
+            body: JSON.stringify({ messages: history.slice(-10) }),
           });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(data.error || 'Что-то пошло не так. Попробуй ещё раз.');

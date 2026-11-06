@@ -150,10 +150,10 @@ function readJson(req) {
 
 // Проверяем историю сообщений, которую прислал браузер
 // Возвращает очищенный массив { role, content }: не больше MAX_HISTORY последних сообщений,
-// только роль user, непустой текст не длиннее MAX_MESSAGE_CHARS.
+// только роли user/assistant, непустой текст не длиннее MAX_MESSAGE_CHARS.
 // Тело запроса приходит из браузера, поэтому доверять ему нельзя — проверяем всё заново.
-// Роль assistant от клиента не принимаем: иначе посетитель мог бы подделать «ответы ИИ»
-// и увести модель из заданной роли. Ответы модели сервер в историю не возвращает.
+// Историю с ответами ИИ присылает браузер, чтобы модель помнила диалог. Текущий вопрос —
+// всегда последнее сообщение, и оно обязано быть от user (иначе 400).
 function validateMessages(body) {
   const list = body?.messages;
   if (!Array.isArray(list) || list.length === 0) {
@@ -161,12 +161,15 @@ function validateMessages(body) {
   }
 
   const messages = list.slice(-MAX_HISTORY).map((m) => {
-    const validRole = m?.role === 'user';
+    const validRole = m?.role === 'user' || m?.role === 'assistant';
     const content = typeof m?.content === 'string' ? m.content.trim() : '';
     if (!validRole || !content) throw new HttpError(400, 'Некорректное сообщение в истории');
     return { role: m.role, content: content.slice(0, MAX_MESSAGE_CHARS) };
   });
 
+  if (messages[messages.length - 1].role !== 'user') {
+    throw new HttpError(400, 'Последнее сообщение должно быть от пользователя');
+  }
   return messages;
 }
 
