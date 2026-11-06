@@ -1253,7 +1253,7 @@
           const res = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: history.slice(-10) }),
+            body: JSON.stringify({ messages: history.filter(m => m.role === 'user').slice(-10) }), // сервер принимает только роль user
           });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(data.error || 'Что-то пошло не так. Попробуй ещё раз.');

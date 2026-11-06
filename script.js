@@ -9,10 +9,12 @@ const fs = require('node:fs/promises');
 const crypto = require('node:crypto');
 const path = require('node:path');
 
+// Настройки. Все значения приходят из переменных окружения (файл .env), кроме API_URL.
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.OPENROUTER_API_KEY;
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3.5-lightning:free';
+// Файл страницы лежит рядом со скриптом; сервер отдаёт только его
 const INDEX_PATH = path.join(__dirname, 'index.html');
 // Сколько прокси стоит перед сервером (0 — сервер доступен напрямую).
 // Нужно, чтобы лимит запросов считался по реальному IP посетителя, а не по IP прокси.
@@ -35,6 +37,7 @@ const RATE_LIMIT = 15;              // запросов к чату...
 const RATE_WINDOW_MS = 60_000;      // ...за минуту с одного IP
 const UPSTREAM_TIMEOUT_MS = 30_000; // сколько ждём ответа от OpenRouter
 
+// Без ключа сервер бесполезен — останавливаемся сразу, а не при первом вопросе в чате
 if (!API_KEY) {
   console.error('Ключ не найден. Добавь в файл .env строку: OPENROUTER_API_KEY=твой_ключ');
   process.exit(1);
@@ -49,8 +52,12 @@ class HttpError extends Error {
 }
 
 /* ───────── Простое ограничение частоты запросов ───────── */
+// Хранилище лимита: IP посетителя -> массив времён его запросов за последнюю минуту.
+// Лежит в памяти процесса: при перезапуске обнуляется и не общее между несколькими экземплярами сервера.
 const hits = new Map(); // ip -> время последних запросов
 
+// Записывает новый запрос и возвращает true, если за окно RATE_WINDOW_MS
+// с этого IP пришло больше RATE_LIMIT запросов (включая текущий).
 function isRateLimited(ip) {
   const now = Date.now();
   const recent = (hits.get(ip) || []).filter((t) => now - t < RATE_WINDOW_MS);
@@ -103,11 +110,14 @@ function buildCsp(nonce) {
   ].join('; ');
 }
 
+// Отправляет JSON-ответ. Все ответы API (и успешные, и ошибки) идут через эту функцию.
 function sendJson(res, status, payload) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(payload));
 }
 
+// Читает тело запроса по частям и разбирает его как JSON.
+// Если тело больше MAX_BODY_BYTES — отклоняет запрос с кодом 413, при невалидном JSON — с кодом 400.
 function readJson(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -139,6 +149,11 @@ function readJson(req) {
 }
 
 // Проверяем историю сообщений, которую прислал браузер
+// Возвращает очищенный массив { role, content }: не больше MAX_HISTORY последних сообщений,
+// только роль user, непустой текст не длиннее MAX_MESSAGE_CHARS.
+// Тело запроса приходит из браузера, поэтому доверять ему нельзя — проверяем всё заново.
+// Роль assistant от клиента не принимаем: иначе посетитель мог бы подделать «ответы ИИ»
+// и увести модель из заданной роли. Ответы модели сервер в историю не возвращает.
 function validateMessages(body) {
   const list = body?.messages;
   if (!Array.isArray(list) || list.length === 0) {
@@ -146,19 +161,19 @@ function validateMessages(body) {
   }
 
   const messages = list.slice(-MAX_HISTORY).map((m) => {
-    const validRole = m?.role === 'user' || m?.role === 'assistant';
+    const validRole = m?.role === 'user';
     const content = typeof m?.content === 'string' ? m.content.trim() : '';
     if (!validRole || !content) throw new HttpError(400, 'Некорректное сообщение в истории');
     return { role: m.role, content: content.slice(0, MAX_MESSAGE_CHARS) };
   });
 
-  if (messages[messages.length - 1].role !== 'user') {
-    throw new HttpError(400, 'Последнее сообщение должно быть от пользователя');
-  }
   return messages;
 }
 
 /* ───────── Запрос к OpenRouter ───────── */
+// Отправляет историю в OpenRouter и возвращает текст ответа модели.
+// Системная инструкция (SYSTEM_PROMPT) добавляется только здесь, на сервере, браузер её не видит.
+// Ключ API уходит только в заголовке Authorization и никогда не попадает в ответ посетителю.
 async function askModel(messages) {
   let response;
   try {
@@ -180,6 +195,7 @@ async function askModel(messages) {
     throw new HttpError(504, 'ИИ не ответил вовремя. Попробуй ещё раз.');
   }
 
+  // Тело ответа может быть не JSON (например, страница ошибки прокси) — тогда data будет null
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
@@ -191,17 +207,28 @@ async function askModel(messages) {
     throw new HttpError(502, 'ИИ временно недоступен. Попробуй позже.');
   }
 
+  // Формат ответа OpenRouter совпадает с OpenAI: текст лежит в choices[0].message.content
   const reply = data?.choices?.[0]?.message?.content?.trim();
   if (!reply) throw new HttpError(502, 'ИИ вернул пустой ответ. Попробуй переформулировать вопрос.');
   return reply;
 }
 
 /* ───────── Сервер ───────── */
+// Единая точка входа: все запросы проходят через этот обработчик.
+// Ошибки, брошенные как HttpError, превращаются в JSON { error } с нужным кодом в блоке catch ниже.
 const server = http.createServer(async (req, res) => {
-  const { pathname } = new URL(req.url, 'http://localhost');
   setSecurityHeaders(res);
 
   try {
+    // Адрес разбираем внутри try: кривой путь (например, «//») бросает исключение,
+    // а исключение вне try роняло весь сервер
+    let pathname;
+    try {
+      ({ pathname } = new URL(req.url, 'http://localhost'));
+    } catch {
+      throw new HttpError(400, 'Некорректный адрес запроса');
+    }
+
     // Страница сайта. Отдаём только index.html, остальные файлы папки (включая .env) недоступны
     if (req.method === 'GET' && (pathname === '/' || pathname === '/index.html')) {
       const nonce = crypto.randomBytes(16).toString('base64');
@@ -215,6 +242,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Маршрут чата: проверка метода -> лимит запросов -> чтение тела -> валидация -> запрос к модели
     // Чат
     if (pathname === '/api/chat') {
       if (req.method !== 'POST') throw new HttpError(405, 'Используй метод POST');
@@ -227,14 +255,34 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Любой другой путь (включая /.env и другие файлы папки) — 404
     throw new HttpError(404, 'Страница не найдена');
   } catch (err) {
+    // HttpError — ожидаемая ошибка с текстом для посетителя; всё остальное считаем сбоем сервера
     const status = err instanceof HttpError ? err.status : 500;
     if (status === 500) console.error(err);
+    // Если ответ уже начали отправлять, второй раз заголовки писать нельзя — просто закрываем
+    if (res.headersSent) {
+      res.end();
+      return;
+    }
     sendJson(res, status, { error: status === 500 ? 'Ошибка сервера' : err.message });
   }
 });
 
+// Страховка на случай ошибки, которую не поймал ни один try/catch.
+// Необработанный reject только логируем — сервер продолжает работать.
+process.on('unhandledRejection', (reason) => {
+  console.error('Необработанная ошибка (promise):', reason);
+});
+// После неожиданного исключения состояние процесса неизвестно: пишем в лог и перезапускаем
+// (менеджер процессов — pm2, systemd, Docker — поднимет сервер заново).
+process.on('uncaughtException', (err) => {
+  console.error('Неожиданное исключение:', err);
+  process.exit(1);
+});
+
+// Запуск: слушаем порт и выводим в консоль адрес и модель
 server.listen(PORT, () => {
   console.log(`AI CLAN запущен: http://localhost:${PORT}`);
   console.log(`Модель: ${MODEL}`);
